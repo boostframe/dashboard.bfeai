@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTheme } from "next-themes";
-import { Sun, Monitor, Moon } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
 import { cn } from "../lib/utils";
 
@@ -37,18 +37,17 @@ const sizeClasses = {
   },
 };
 
-const themeOrder = ["light", "system", "dark"] as const;
-const themeIcons = { light: Sun, system: Monitor, dark: Moon };
+const themeOrder = ["light", "dark"] as const;
+const themeIcons = { light: Sun, dark: Moon };
 const themeLabels = {
   light: "Light mode",
-  system: "System theme",
   dark: "Dark mode",
 };
 
 /**
  * Theme toggle segmented control for BFEAI apps.
- * Displays three options: Light, System, and Dark with outline icons.
- * In compact mode, shows single icon that cycles through themes on click.
+ * Displays two options: Light and Dark with outline icons.
+ * In compact mode, shows single icon that toggles between themes on click.
  */
 export function ThemeToggle({
   className,
@@ -95,7 +94,6 @@ export function ThemeToggle({
 
   const options = [
     { value: "light", icon: Sun, label: "Light mode" },
-    { value: "system", icon: Monitor, label: "System theme" },
     { value: "dark", icon: Moon, label: "Dark mode" },
   ] as const;
 
@@ -111,7 +109,7 @@ export function ThemeToggle({
           )}
           aria-hidden="true"
         >
-          <Monitor
+          <Sun
             className={cn(sizes.icon, "text-muted-foreground")}
             strokeWidth={1.5}
           />
@@ -147,9 +145,9 @@ export function ThemeToggle({
 
   // Compact mode - single button that cycles through themes
   if (compact) {
-    const currentTheme = (theme as (typeof themeOrder)[number]) || "system";
-    const Icon = themeIcons[currentTheme] || Monitor;
-    const label = themeLabels[currentTheme] || "System theme";
+    const currentTheme = (theme as (typeof themeOrder)[number]) || "light";
+    const Icon = themeIcons[currentTheme] || Sun;
+    const label = themeLabels[currentTheme] || "Light mode";
 
     return (
       <button

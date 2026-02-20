@@ -5,12 +5,10 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 export interface ThemeProviderProps {
   children: React.ReactNode;
-  /** Default theme if no preference is stored. Defaults to "system" */
-  defaultTheme?: "light" | "dark" | "system";
+  /** Default theme if no preference is stored. Defaults to "light" */
+  defaultTheme?: "light" | "dark";
   /** localStorage key for storing theme preference. Defaults to "theme" */
   storageKey?: string;
-  /** Whether to enable system theme detection. Defaults to true */
-  enableSystem?: boolean;
   /** Disable CSS transitions when switching themes to prevent flash. Defaults to true */
   disableTransitionOnChange?: boolean;
 }
@@ -20,9 +18,8 @@ export interface ThemeProviderProps {
  */
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "light",
   storageKey = "theme",
-  enableSystem = true,
   disableTransitionOnChange = true,
   ...props
 }: ThemeProviderProps) {
@@ -30,7 +27,7 @@ export function ThemeProvider({
     <NextThemesProvider
       attribute="class"
       defaultTheme={defaultTheme}
-      enableSystem={enableSystem}
+      enableSystem={false}
       storageKey={storageKey}
       disableTransitionOnChange={disableTransitionOnChange}
       {...props}
