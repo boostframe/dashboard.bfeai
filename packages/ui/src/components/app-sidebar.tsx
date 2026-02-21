@@ -152,12 +152,12 @@ export function AppSidebar({
       <CollapseToggle />
 
       {/* ---- Header ---- */}
-      <SidebarHeader className="p-4">
-        <a href={dashHref} className="flex items-center gap-3">
+      <SidebarHeader className={cn("p-4", isCollapsed && "p-2 items-center")}>
+        <a href={dashHref} className={cn("flex items-center gap-3", isCollapsed && "justify-center")}>
           <img
             src="/brand/BFE_Icon_TRN.png"
             alt="BFEAI"
-            className="h-10 w-10 rounded-lg"
+            className={cn("rounded-lg shrink-0", isCollapsed ? "h-8 w-8" : "h-10 w-10")}
           />
           <span
             className={cn(
@@ -248,10 +248,10 @@ export function AppSidebar({
                     <img
                       src={user.avatarUrl}
                       alt=""
-                      className="h-8 w-8 rounded-full object-cover"
+                      className={cn("rounded-full object-cover shrink-0", isCollapsed ? "h-5 w-5" : "h-8 w-8")}
                     />
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-indigo/10 text-xs font-medium">
+                    <span className={cn("flex items-center justify-center rounded-full bg-brand-indigo/10 font-medium shrink-0", isCollapsed ? "h-5 w-5 text-[10px]" : "h-8 w-8 text-xs")}>
                       {getInitials(user.fullName)}
                     </span>
                   )}
@@ -314,7 +314,7 @@ export function AppSidebar({
           {/* Theme toggle */}
           {themeToggle && (
             <SidebarMenuItem>
-              <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
+              <div className={cn("flex items-center gap-2 rounded-md px-2 py-1.5", isCollapsed && "justify-center px-0")}>
                 {themeToggle}
                 <span className={cn("text-sm", isCollapsed && "hidden")}>Theme</span>
               </div>
@@ -326,11 +326,11 @@ export function AppSidebar({
             <Button
               variant="outline"
               size="sm"
-              className="w-full justify-start gap-2"
+              className={cn("justify-start gap-2", isCollapsed ? "h-8 w-8 p-0 justify-center" : "w-full")}
               onClick={onLogout}
               disabled={isLoggingOut}
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4 shrink-0" />
               <span className={cn(isCollapsed && "hidden")}>
                 {isLoggingOut ? "Logging out..." : "Log out"}
               </span>

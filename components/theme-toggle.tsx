@@ -96,7 +96,7 @@ export function ThemeToggle({
       return (
         <div
           className={cn(
-            "flex items-center justify-center rounded-full border bg-muted",
+            "flex items-center justify-center rounded-full border border-border bg-muted",
             sizes.button,
             className
           )}
@@ -109,7 +109,7 @@ export function ThemeToggle({
     return (
       <div
         className={cn(
-          "inline-flex items-center rounded-full border bg-muted",
+          "inline-flex items-center rounded-full border border-border bg-muted",
           sizes.container,
           className
         )}
@@ -164,7 +164,7 @@ export function ThemeToggle({
       role="radiogroup"
       aria-label="Theme selection"
       className={cn(
-        "inline-flex items-center rounded-full border bg-muted",
+        "inline-flex items-center rounded-full border border-border bg-muted",
         sizes.container,
         className
       )}

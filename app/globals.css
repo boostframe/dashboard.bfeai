@@ -177,6 +177,15 @@
     font-variation-settings: 'opsz' 32;
   }
 
+  /* Match sidebar font to keywords/labs system font stack for uniformity */
+  [data-sidebar="sidebar"] {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+    font-feature-settings: normal;
+    font-variation-settings: normal;
+  }
+
   /* Typography hierarchy - BFEAI Brand Guide compliant */
   h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
