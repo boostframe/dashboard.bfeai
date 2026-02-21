@@ -1,75 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import {
-  User,
-  Settings,
-  Sparkles,
-  CreditCard,
-  LogOut,
-  Search,
-  Headphones,
-  Menu,
-  ChevronLeft,
-  Coins,
-  LayoutDashboard,
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Sparkles, Menu } from 'lucide-react';
 
 import {
+  AppSidebar,
   Button,
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
   SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarProvider,
-  SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
 } from '@bfeai/ui';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { cn } from '@/lib/utils';
 import { BugReportWidget } from '@/components/bug-report/BugReportWidget';
 import { useCredits } from '@/hooks/use-credits';
-
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Profile', href: '/profile', icon: User },
-  { label: 'Billing & Invoices', href: '/billing', icon: CreditCard },
-  { label: 'Credits', href: '/credits', icon: Coins },
-  { label: 'Explore Apps', href: '/apps', icon: Sparkles },
-  { label: 'Settings', href: '/settings', icon: Settings },
-];
-
-const APP_LINKS = [
-  {
-    label: 'Keywords Tool',
-    href: 'https://keywords.bfeai.com',
-    icon: Search,
-    description: 'SEO keyword research',
-  },
-  {
-    label: 'LABS',
-    href: 'https://labs.bfeai.com',
-    icon: Sparkles,
-    description: 'AI visibility monitoring',
-  },
-];
-
-const BOTTOM_LINKS = [
-  {
-    label: 'Support',
-    href: 'mailto:support@bfeai.com',
-    icon: Headphones,
-  },
-];
 
 interface UserData {
   email: string;
@@ -95,26 +39,8 @@ function DashboardContent({
   isLoggingOut: boolean;
   handleSignOut: () => void;
 }) {
-  const pathname = usePathname();
   const router = useRouter();
-  const { state, toggleSidebar } = useSidebar();
   const credits = useCredits();
-  const isCollapsed = state === 'collapsed';
-
-  const initials = useMemo(() => {
-    if (user?.fullName) {
-      return user.fullName
-        .split(' ')
-        .map((part) => part[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.split('@')[0].slice(0, 2).toUpperCase();
-    }
-    return 'BF';
-  }, [user]);
 
   const firstName =
     user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'friend';
@@ -130,195 +56,14 @@ function DashboardContent({
   return (
     <>
       {/* Sidebar */}
-      <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-        {/* Collapse toggle button */}
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          className="hidden md:flex absolute -right-3 top-6 z-10 w-6 h-6 items-center justify-center rounded-full border border-sidebar-border bg-background shadow-sm hover:bg-accent transition-colors"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <ChevronLeft
-            className={cn(
-              'h-3 w-3 text-muted-foreground transition-transform duration-200',
-              isCollapsed && 'rotate-180'
-            )}
-          />
-        </button>
-
-        <SidebarHeader className="p-4">
-          {/* Logo/Brand Header */}
-          <a href="/" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-indigo text-white shrink-0">
-              <User className="h-5 w-5" />
-            </div>
-            <div className={cn('transition-opacity', isCollapsed && 'hidden')}>
-              <span className="text-lg font-semibold text-foreground group-hover:text-brand-indigo transition-colors">
-                Dashboard
-              </span>
-            </div>
-          </a>
-          <p className={cn('mt-2 text-xs text-muted-foreground line-clamp-2', isCollapsed && 'hidden')}>
-            Manage your account, billing, and apps.
-          </p>
-        </SidebarHeader>
-
-        <SidebarContent>
-          {/* Main Navigation */}
-          <SidebarGroup>
-            <SidebarGroupLabel className={cn('text-xs font-semibold uppercase tracking-[0.2em]', isCollapsed && 'sr-only')}>
-              Account
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {NAV_ITEMS.map((item) => {
-                  const isActive =
-                    item.href === '/'
-                      ? pathname === '/'
-                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  const Icon = item.icon;
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        onClick={() => router.push(item.href)}
-                        tooltip={item.label}
-                        className={cn(
-                          isActive &&
-                            'bg-brand-indigo text-white hover:bg-brand-indigo/90 hover:text-white'
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          <SidebarSeparator />
-
-          {/* Apps Section */}
-          <SidebarGroup>
-            <SidebarGroupLabel className={cn('text-xs font-semibold uppercase tracking-[0.2em]', isCollapsed && 'sr-only')}>
-              Your Apps
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {APP_LINKS.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild tooltip={item.label}>
-                        <a href={item.href}>
-                          <Icon className="h-4 w-4" />
-                          <span>{item.label}</span>
-                        </a>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-
-        <SidebarFooter className="p-4 space-y-3">
-          {/* User Info */}
-          <div className={cn('flex items-center gap-3 px-2', isCollapsed && 'justify-center px-0')}>
-            {user?.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.fullName || 'User'}
-                className={cn('rounded-full object-cover shrink-0', isCollapsed ? 'h-9 w-9' : 'h-8 w-8')}
-              />
-            ) : (
-              <div className={cn(
-                'flex shrink-0 items-center justify-center rounded-full bg-brand-indigo/10 text-brand-indigo font-semibold text-xs',
-                isCollapsed ? 'h-9 w-9' : 'h-8 w-8'
-              )}>
-                {initials}
-              </div>
-            )}
-            {!isCollapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {user?.fullName || 'User'}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {user?.email}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Credit Balance */}
-          {credits && (
-            <a
-              href="/credits"
-              title={isCollapsed ? `${credits.total} credits` : undefined}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition hover:bg-accent/50',
-                isCollapsed && 'justify-center px-2'
-              )}
-            >
-              <Coins className="h-4 w-4 shrink-0 text-amber-500" />
-              {!isCollapsed && (
-                <div>
-                  <span className="font-semibold text-foreground">{credits.total}</span>
-                  <span className="ml-1 text-xs text-muted-foreground">credits</span>
-                </div>
-              )}
-            </a>
-          )}
-
-          {/* Bottom Links */}
-          {BOTTOM_LINKS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                title={isCollapsed ? item.label : undefined}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground transition',
-                  isCollapsed && 'justify-center px-2'
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {!isCollapsed && item.label}
-              </a>
-            );
-          })}
-
-          {/* Theme Toggle Row */}
-          <div className={cn('flex items-center px-3 py-2', isCollapsed ? 'justify-center px-0' : 'justify-between')}>
-            {!isCollapsed && <span className="text-sm text-muted-foreground">Theme</span>}
-            {isCollapsed ? (
-              <ThemeToggle size="sm" syncToCookie compact />
-            ) : (
-              <ThemeToggle size="sm" syncToCookie />
-            )}
-          </div>
-
-          {/* Log Out Button */}
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={isLoggingOut}
-            title={isCollapsed ? 'Log out' : undefined}
-            className={cn(
-              'flex w-full items-center justify-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/50',
-              isCollapsed && 'px-2'
-            )}
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!isCollapsed && (isLoggingOut ? 'Logging out...' : 'Log out')}
-          </button>
-        </SidebarFooter>
-      </Sidebar>
+      <AppSidebar
+        currentApp="dashboard"
+        user={user}
+        credits={credits ? { total: credits.total } : null}
+        onLogout={handleSignOut}
+        isLoggingOut={isLoggingOut}
+        themeToggle={<ThemeToggle size="sm" syncToCookie compact />}
+      />
 
       {/* Main Content */}
       <SidebarInset>
@@ -329,10 +74,8 @@ function DashboardContent({
             <span className="sr-only">Toggle sidebar</span>
           </SidebarTrigger>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-indigo text-white">
-              <User className="h-4 w-4" />
-            </div>
-            <span className="font-semibold">Accounts</span>
+            <img src="/brand/BFE_Icon_TRN.png" alt="BFEAI" className="h-8 w-8 rounded-lg" />
+            <span className="font-semibold">BFEAI</span>
           </div>
         </header>
 
