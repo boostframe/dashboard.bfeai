@@ -147,7 +147,7 @@ export function AppSidebar({
   const activeClass = "bg-brand-indigo text-white hover:bg-brand-indigo/90 hover:text-white";
 
   return (
-    <Sidebar collapsible="icon" className="relative border-r">
+    <Sidebar collapsible="icon" className="border-r">
       {/* Collapse toggle */}
       <CollapseToggle />
 
