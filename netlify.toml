@@ -1,18 +1,23 @@
-# Netlify configuration for accounts.bfeai.com
+# Netlify configuration for dashboard.bfeai.com
 
 [build]
   command = "npm run build"
   publish = ".next"
 
 [build.environment]
-  NEXT_PUBLIC_APP_NAME = "accounts"
-  NEXT_PUBLIC_APP_URL = "https://accounts.bfeai.com"
+  NEXT_PUBLIC_APP_NAME = "dashboard"
+  NEXT_PUBLIC_APP_URL = "https://dashboard.bfeai.com"
   NODE_ENV = "production"
   NODE_VERSION = "20"
+  SKIP_ENV_VALIDATION = "true"
 
 # Pin the Next.js plugin to the version that worked
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Netlify Functions directory (Stripe billing, credits, etc.)
+[functions]
+  directory = "netlify/functions"
 
 # NOTE: No redirects needed for Next.js API routes
 # The @netlify/plugin-nextjs handles all API routes automatically
@@ -36,7 +41,7 @@
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
 
     # Content Security Policy
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.bfeai.com; frame-ancestors 'none';"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.bfeai.com https://*.stripe.com; frame-ancestors 'none';"
 
 # Headers for API routes
 [[headers]]
