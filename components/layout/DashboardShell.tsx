@@ -80,7 +80,7 @@ function DashboardContent({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
+        <div className="flex-1 p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-5xl">
             {/* Welcome Header */}
             <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -108,7 +108,7 @@ function DashboardContent({
               {children}
             </div>
           </div>
-        </main>
+        </div>
         <BugReportWidget appSource="dashboard" />
       </SidebarInset>
     </>
