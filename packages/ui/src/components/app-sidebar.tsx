@@ -152,8 +152,8 @@ export function AppSidebar({
   const isKeywords = currentApp === "keywords";
   const isLabs = currentApp === "labs";
 
-  // Active-state style overrides
-  const activeClass = "bg-brand-indigo text-white hover:bg-brand-indigo/90 hover:text-white";
+  // Active-state style overrides (data-[active=true]: needed to beat sidebar.tsx CVA specificity)
+  const activeClass = "bg-brand-indigo text-white hover:bg-brand-indigo/90 hover:text-white data-[active=true]:bg-brand-indigo data-[active=true]:text-white";
 
   return (
     <Sidebar collapsible="icon" className="border-r">
