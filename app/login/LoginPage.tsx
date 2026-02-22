@@ -89,12 +89,12 @@ function LoginForm() {
       // Check if redirect is to another BFEAI subdomain (cross-domain SSO)
       const isCrossDomainRedirect = redirectUrl.startsWith('https://') &&
         redirectUrl.includes('.bfeai.com') &&
-        !redirectUrl.startsWith('https://accounts.bfeai.com');
+        !redirectUrl.startsWith('https://dashboard.bfeai.com');
 
       // Also check for localhost in development
       const isDevCrossDomainRedirect = process.env.NODE_ENV !== 'production' &&
         redirectUrl.startsWith('http://localhost:') &&
-        !redirectUrl.includes(':3000'); // accounts.bfeai is typically on 3000
+        !redirectUrl.includes(':3000'); // dashboard.bfeai is typically on 3000
 
       if (isCrossDomainRedirect || isDevCrossDomainRedirect) {
         // Use code-based flow for cross-subdomain redirects

@@ -64,6 +64,13 @@ export function middleware(request: NextRequest) {
   if (isPublicPath(pathname)) {
     // Redirect authenticated users away from login/signup to dashboard
     if (isAuthPage(pathname) && hasValidToken(request)) {
+      const redirect = request.nextUrl.searchParams.get('redirect');
+      if (redirect) {
+        if (redirect.startsWith('https://') && redirect.includes('.bfeai.com')) {
+          return NextResponse.redirect(new URL(redirect));
+        }
+        return NextResponse.redirect(new URL(redirect, request.url));
+      }
       return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();
