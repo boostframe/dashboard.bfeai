@@ -12,7 +12,7 @@ export default function BillingPortalPage() {
         const res = await fetch('/.netlify/functions/stripe-portal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ returnUrl: window.location.origin + '/billing' }),
+          body: JSON.stringify({ returnUrl: window.location.origin + '/' }),
         });
         const data = await res.json();
         if (data.url) {
