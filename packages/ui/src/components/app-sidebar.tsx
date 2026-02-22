@@ -278,7 +278,7 @@ export function AppSidebar({
                     {user.fullName && (
                       <span className="truncate text-sm font-medium">{user.fullName}</span>
                     )}
-                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                    <span className={cn("truncate text-xs", isProfile ? "text-white/80" : "text-muted-foreground")}>{user.email}</span>
                   </span>
                 </a>
               </SidebarMenuButton>
@@ -290,10 +290,10 @@ export function AppSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip={`${credits.total} credits`} isActive={isCredits} className={isCredits ? activeClass : undefined}>
                 <a href={creditsHref}>
-                  <Coins className="text-amber-500" />
+                  <Coins className={isCredits ? "text-white" : "text-amber-500"} />
                   <span className={cn(isCollapsed && "hidden")}>
                     <span className="font-semibold">{credits.total}</span>{" "}
-                    <span className="text-xs text-muted-foreground">credits</span>
+                    <span className={cn("text-xs", isCredits ? "text-white/80" : "text-muted-foreground")}>credits</span>
                   </span>
                 </a>
               </SidebarMenuButton>
