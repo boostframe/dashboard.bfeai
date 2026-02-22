@@ -90,6 +90,10 @@ export const handler: Handler = async (event) => {
         await handleInvoiceActionRequired(stripeEvent.data.object as Stripe.Invoice);
         break;
 
+      case "customer.updated":
+        await handleCustomerUpdated(stripeEvent.data.object as Stripe.Customer);
+        break;
+
       default:
         console.log(`[stripe-webhook] Unhandled event type: ${stripeEvent.type}`);
     }
@@ -621,4 +625,38 @@ async function handleInvoiceActionRequired(invoice: Stripe.Invoice) {
 
   // The subscription moves to 'incomplete' status until the customer completes authentication.
   // Status sync handled via customer.subscription.updated event.
+}
+
+async function handleCustomerUpdated(customer: Stripe.Customer) {
+  if (customer.deleted) return;
+
+  const userId = await getUserIdFromStripeCustomer(customer.id);
+  if (!userId) {
+    console.error("[stripe-webhook] No BFEAI user for customer.updated:", customer.id);
+    return;
+  }
+
+  const updates: Record<string, string> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (customer.name) {
+    updates.full_name = customer.name;
+  }
+  if (customer.phone) {
+    updates.phone = customer.phone;
+  }
+
+  // Only write if there's something to sync beyond updated_at
+  if (Object.keys(updates).length <= 1) {
+    console.log(`[stripe-webhook] customer.updated for user ${userId} — no profile fields to sync`);
+    return;
+  }
+
+  await supabaseAdmin
+    .from("profiles")
+    .update(updates)
+    .eq("id", userId);
+
+  console.log(`[stripe-webhook] Synced billing info to profile for user ${userId}: ${Object.keys(updates).filter(k => k !== "updated_at").join(", ")}`);
 }
