@@ -84,7 +84,26 @@ export const CreditBalanceCard = ({
         </div>
 
         {/* Pool breakdown */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className={`grid gap-3 ${balance.trialBalance > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
+          {balance.trialBalance > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/30 p-3">
+                    <p className="text-xs text-amber-600 dark:text-amber-400">Trial</p>
+                    <p className="text-lg font-semibold text-foreground">
+                      {balance.trialBalance.toLocaleString()}
+                    </p>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Trial credits from your $1 trial. Used first.</p>
+                  <p>These expire at the end of your trial period.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -96,7 +115,7 @@ export const CreditBalanceCard = ({
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Monthly credits from your Keywords subscription.</p>
+                <p>Monthly credits from your subscription.</p>
                 <p>Caps at {balance.cap.toLocaleString()} (3x monthly).</p>
               </TooltipContent>
             </Tooltip>
@@ -114,7 +133,7 @@ export const CreditBalanceCard = ({
               </TooltipTrigger>
               <TooltipContent>
                 <p>Credits from top-up purchases. No cap.</p>
-                <p>These are used first when you run operations.</p>
+                <p>These are used after trial credits.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

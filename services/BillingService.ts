@@ -30,6 +30,7 @@ export type BillingInvoice = {
 export type CreditBalance = {
   subscriptionBalance: number;
   topupBalance: number;
+  trialBalance: number;
   total: number;
   cap: number;
   lifetimeEarned: number;
@@ -40,7 +41,7 @@ export type CreditTransaction = {
   id: string;
   amount: number;
   balance_after: number;
-  pool: "subscription" | "topup";
+  pool: "subscription" | "topup" | "trial";
   type: string;
   description: string | null;
   app_key: string | null;

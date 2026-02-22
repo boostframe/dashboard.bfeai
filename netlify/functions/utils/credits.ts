@@ -9,6 +9,7 @@ import { findSubscriptionByPriceId, findSubscriptionPlan } from "../../../config
 export type CreditBalance = {
   subscriptionBalance: number;
   topupBalance: number;
+  trialBalance: number;
   total: number;
   cap: number;
   lifetimeEarned: number;
@@ -53,7 +54,7 @@ export type CreditTransaction = {
 export const getBalance = async (userId: string): Promise<CreditBalance> => {
   const { data, error } = await supabaseAdmin
     .from("user_credits")
-    .select("subscription_balance, topup_balance, subscription_cap, lifetime_earned, lifetime_spent")
+    .select("subscription_balance, topup_balance, trial_balance, trial_expires_at, subscription_cap, lifetime_earned, lifetime_spent")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -62,13 +63,19 @@ export const getBalance = async (userId: string): Promise<CreditBalance> => {
   }
 
   if (!data) {
-    return { subscriptionBalance: 0, topupBalance: 0, total: 0, cap: 900, lifetimeEarned: 0, lifetimeSpent: 0 };
+    return { subscriptionBalance: 0, topupBalance: 0, trialBalance: 0, total: 0, cap: 900, lifetimeEarned: 0, lifetimeSpent: 0 };
   }
+
+  // Check if trial credits have expired
+  const now = new Date();
+  const trialExpiresAt = data.trial_expires_at ? new Date(data.trial_expires_at) : null;
+  const trialBalance = trialExpiresAt && trialExpiresAt < now ? 0 : (data.trial_balance ?? 0);
 
   return {
     subscriptionBalance: data.subscription_balance,
     topupBalance: data.topup_balance,
-    total: data.subscription_balance + data.topup_balance,
+    trialBalance,
+    total: data.subscription_balance + data.topup_balance + trialBalance,
     cap: data.subscription_cap,
     lifetimeEarned: data.lifetime_earned,
     lifetimeSpent: data.lifetime_spent,
@@ -100,11 +107,11 @@ export const checkCredits = async (
 };
 
 // ---------------------------------------------------------------------------
-// Deductions (spend order: topup first, then subscription)
+// Deductions (spend order: trial first, then topup, then subscription)
 // ---------------------------------------------------------------------------
 
 /**
- * Deduct credits for an operation. Drains topup_balance first, then subscription_balance.
+ * Deduct credits for an operation. Drains trial_balance first, then topup, then subscription.
  * Returns the new total balance and transaction ID.
  */
 export const deductCredits = async (
@@ -126,17 +133,22 @@ export const deductCredits = async (
   const now = new Date().toISOString();
   let lastTransactionId = "";
 
-  // Calculate split: topup drains first, then subscription
-  const deductFromTopup = Math.min(cost, balance.topupBalance);
-  const deductFromSub = cost - deductFromTopup;
+  // Calculate split: trial drains first, then topup, then subscription
+  const deductFromTrial = Math.min(cost, balance.trialBalance);
+  const remainingAfterTrial = cost - deductFromTrial;
+  const deductFromTopup = Math.min(remainingAfterTrial, balance.topupBalance);
+  const deductFromSub = remainingAfterTrial - deductFromTopup;
+
+  const newTrial = balance.trialBalance - deductFromTrial;
   const newTopup = balance.topupBalance - deductFromTopup;
   const newSub = balance.subscriptionBalance - deductFromSub;
   const newBalance = balance.total - cost;
 
-  // Update both pools and lifetime_spent in a single write
+  // Update all three pools and lifetime_spent in a single write
   await supabaseAdmin
     .from("user_credits")
     .update({
+      trial_balance: newTrial,
       topup_balance: newTopup,
       subscription_balance: newSub,
       lifetime_spent: balance.lifetimeSpent + cost,
@@ -145,13 +157,32 @@ export const deductCredits = async (
     .eq("user_id", userId);
 
   // Log transaction(s)
+  if (deductFromTrial > 0) {
+    const { data: txn } = await supabaseAdmin
+      .from("credit_transactions")
+      .insert({
+        user_id: userId,
+        amount: -deductFromTrial,
+        balance_after: balance.total - deductFromTrial,
+        pool: "trial",
+        type: "usage_deduction",
+        description: `${operation} (${appKey})`,
+        app_key: appKey,
+        reference_id: referenceId ?? null,
+      })
+      .select("id")
+      .single();
+
+    lastTransactionId = txn?.id ?? "";
+  }
+
   if (deductFromTopup > 0) {
     const { data: txn } = await supabaseAdmin
       .from("credit_transactions")
       .insert({
         user_id: userId,
         amount: -deductFromTopup,
-        balance_after: balance.total - deductFromTopup,
+        balance_after: balance.total - deductFromTrial - deductFromTopup,
         pool: "topup",
         type: "usage_deduction",
         description: `${operation} (${appKey})`,
