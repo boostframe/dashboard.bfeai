@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Sparkles, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 import {
   AppSidebar,
-  Button,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
@@ -39,12 +38,8 @@ function DashboardContent({
   isLoggingOut: boolean;
   handleSignOut: () => void;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const credits = useCredits();
-
-  const firstName =
-    user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'friend';
 
   if (loading) {
     return (
@@ -84,27 +79,6 @@ function DashboardContent({
         {/* Page Content */}
         <div className="flex-1 p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-5xl">
-            {/* Welcome Header */}
-            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Manage your account, billing, and connected apps.
-                </p>
-                <h1 className="text-2xl font-bold text-foreground md:text-3xl lg:text-4xl">
-                  Welcome back, {firstName}.
-                </h1>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  className="h-11 gap-2 rounded-lg bg-brand-indigo text-white shadow-lg shadow-brand-indigo/40 hover:bg-brand-indigo/90"
-                  onClick={() => router.push('/apps')}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Explore apps
-                </Button>
-              </div>
-            </div>
-
             {/* Page Children */}
             <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               {children}

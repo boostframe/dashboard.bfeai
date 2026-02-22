@@ -218,13 +218,15 @@ export function DashboardPage() {
 
       {/* Credits + Recent payments */}
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <CreditBalanceCard
-          balance={credits}
-          isLoading={isLoading}
-          onViewCredits={() => router.push("/credits")}
-        />
+        <div className="lg:col-span-2">
+          <CreditBalanceCard
+            balance={credits}
+            isLoading={isLoading}
+            onViewCredits={() => router.push("/credits")}
+          />
+        </div>
 
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader className="space-y-1">
             <CardDescription>Recent payments</CardDescription>
             <CardTitle className="text-lg">Billing activity</CardTitle>
@@ -312,7 +314,8 @@ export function DashboardPage() {
 
             {/* Billing */}
             <button
-              onClick={() => router.push('/billing')}
+              onClick={() => void handleManageBilling()}
+              disabled={portalSessionLoading}
               className="group flex items-center gap-3 rounded-xl border border-border p-4 transition hover:border-brand-purple/50 hover:shadow-md text-left"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-brand-purple/10 group-hover:text-brand-purple transition-colors">

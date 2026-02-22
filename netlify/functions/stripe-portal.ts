@@ -14,7 +14,7 @@ export const handler = withErrorHandling(async (event) => {
     throw new HttpError(400, "User email is required");
   }
 
-  let returnUrl = "https://payments.bfeai.com/billing";
+  let returnUrl = "https://dashboard.bfeai.com";
   try {
     const body = event.body ? JSON.parse(event.body) : {};
     if (body.returnUrl) {

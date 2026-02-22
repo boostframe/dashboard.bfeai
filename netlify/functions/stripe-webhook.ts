@@ -630,9 +630,40 @@ async function handleInvoiceActionRequired(invoice: Stripe.Invoice) {
 async function handleCustomerUpdated(customer: Stripe.Customer) {
   if (customer.deleted) return;
 
-  const userId = await getUserIdFromStripeCustomer(customer.id);
+  // Primary lookup: by stripe_customer_id on profiles
+  let userId = await getUserIdFromStripeCustomer(customer.id);
+
+  // Fallback 1: Stripe customer metadata may have bfeai_user_id
+  if (!userId && customer.metadata?.bfeai_user_id) {
+    userId = customer.metadata.bfeai_user_id;
+    console.log(`[stripe-webhook] customer.updated: found user via metadata: ${userId}`);
+    // Backfill the stripe_customer_id on profile for future lookups
+    await supabaseAdmin
+      .from("profiles")
+      .update({ stripe_customer_id: customer.id, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+  }
+
+  // Fallback 2: lookup by email
+  if (!userId && customer.email) {
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("email", customer.email)
+      .maybeSingle();
+    if (profile) {
+      userId = profile.id;
+      console.log(`[stripe-webhook] customer.updated: found user via email: ${userId}`);
+      // Backfill the stripe_customer_id on profile for future lookups
+      await supabaseAdmin
+        .from("profiles")
+        .update({ stripe_customer_id: customer.id, updated_at: new Date().toISOString() })
+        .eq("id", userId);
+    }
+  }
+
   if (!userId) {
-    console.error("[stripe-webhook] No BFEAI user for customer.updated:", customer.id);
+    console.error("[stripe-webhook] No BFEAI user for customer.updated:", customer.id, "email:", customer.email);
     return;
   }
 
@@ -653,10 +684,15 @@ async function handleCustomerUpdated(customer: Stripe.Customer) {
     return;
   }
 
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from("profiles")
     .update(updates)
     .eq("id", userId);
+
+  if (error) {
+    console.error(`[stripe-webhook] Failed to sync profile for user ${userId}:`, error);
+    return;
+  }
 
   console.log(`[stripe-webhook] Synced billing info to profile for user ${userId}: ${Object.keys(updates).filter(k => k !== "updated_at").join(", ")}`);
 }
