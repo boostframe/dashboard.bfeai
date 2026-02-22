@@ -1,7 +1,15 @@
 import Stripe from "stripe";
 import { HttpError } from "./http";
 import { supabaseAdmin } from "./supabase-admin";
-import { findSubscriptionByPriceId, findSubscriptionPlan, BUNDLE_DISCOUNT_COUPON_ID } from "../../../config/plans";
+import {
+  findSubscriptionByPriceId,
+  findSubscriptionPlan,
+  BUNDLE_DISCOUNT_COUPON_ID,
+  DUAL_TRIAL_SETUP_FEE_PRICE_ID,
+  getDualTrialAppKeys,
+  getDualTrialTiers,
+  getTrialCreditsForApp,
+} from "../../../config/plans";
 import { getStripeEnv } from "../../../lib/stripe-env";
 
 const stripeSecretKey = getStripeEnv("STRIPE_SECRET_KEY");
@@ -13,6 +21,7 @@ if (!stripeSecretKey) {
 export const stripe = new Stripe(stripeSecretKey);
 
 const TRIAL_SETUP_FEE_PRICE_ID = getStripeEnv("STRIPE_PRICE_TRIAL_SETUP_FEE");
+import { allocateTrialCredits } from "./credits";
 
 // ---------------------------------------------------------------------------
 // Customer management
@@ -190,6 +199,50 @@ export const createTrialCheckoutSession = async (
       metadata: { app_key: appKey },
     },
   });
+};
+
+/**
+ * Create a Stripe Checkout session for an unauthenticated trial.
+ * Accepts either an existing customerId OR a customer_email for new users.
+ * Adds metadata.flow: "unauthenticated" so the webhook knows to auto-provision.
+ */
+export const createPublicTrialCheckoutSession = async (
+  opts: {
+    customerId?: string;
+    customerEmail?: string;
+    recurringPriceId: string;
+    appKey: string;
+    successUrl: string;
+    cancelUrl: string;
+  }
+): Promise<Stripe.Checkout.Session> => {
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+    { price: opts.recurringPriceId, quantity: 1 },
+  ];
+
+  if (TRIAL_SETUP_FEE_PRICE_ID) {
+    lineItems.push({ price: TRIAL_SETUP_FEE_PRICE_ID, quantity: 1 });
+  }
+
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    mode: "subscription",
+    line_items: lineItems,
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    metadata: { type: "trial", app_key: opts.appKey, flow: "unauthenticated" },
+    subscription_data: {
+      trial_period_days: 7,
+      metadata: { app_key: opts.appKey },
+    },
+  };
+
+  if (opts.customerId) {
+    sessionParams.customer = opts.customerId;
+  } else if (opts.customerEmail) {
+    sessionParams.customer_email = opts.customerEmail;
+  }
+
+  return stripe.checkout.sessions.create(sessionParams);
 };
 
 // ---------------------------------------------------------------------------
@@ -567,4 +620,116 @@ export const removeBundleDiscountIfIneligible = async (
       console.error(`[stripe] Failed to remove bundle discount from ${sub.id}:`, err);
     }
   }
+};
+
+// ---------------------------------------------------------------------------
+// Dual trial
+// ---------------------------------------------------------------------------
+
+/**
+ * Check if a user is eligible for a dual trial (Keywords + LABS).
+ * Only eligible if BOTH apps have never been trialed/subscribed.
+ */
+export const checkDualTrialEligibility = async (
+  userId: string,
+  customerId: string
+): Promise<{ eligible: boolean; reason?: string }> => {
+  const appKeys = getDualTrialAppKeys();
+
+  for (const appKey of appKeys) {
+    const result = await checkTrialEligibility(userId, appKey, customerId);
+    if (!result.eligible) {
+      return {
+        eligible: false,
+        reason: `Not eligible for dual trial: ${result.reason}`,
+      };
+    }
+  }
+
+  return { eligible: true };
+};
+
+/**
+ * Create a Stripe Checkout session for the dual trial $2 setup fee.
+ * mode: "payment" — just collects the fee. Subscriptions are created by the webhook.
+ */
+export const createDualTrialCheckoutSession = async (
+  opts: {
+    customerId?: string;
+    customerEmail?: string;
+    userId?: string;
+    successUrl: string;
+    cancelUrl: string;
+    flow?: string;
+  }
+): Promise<Stripe.Checkout.Session> => {
+  if (!DUAL_TRIAL_SETUP_FEE_PRICE_ID) {
+    throw new HttpError(500, "STRIPE_PRICE_DUAL_TRIAL_SETUP_FEE is not configured");
+  }
+
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    mode: "payment",
+    line_items: [{ price: DUAL_TRIAL_SETUP_FEE_PRICE_ID, quantity: 1 }],
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    payment_intent_data: {
+      metadata: {
+        type: "dual_trial",
+        ...(opts.userId ? { user_id: opts.userId } : {}),
+      },
+    },
+    metadata: {
+      type: "dual_trial",
+      ...(opts.userId ? { user_id: opts.userId } : {}),
+      ...(opts.flow ? { flow: opts.flow } : {}),
+    },
+  };
+
+  if (opts.customerId) {
+    sessionParams.customer = opts.customerId;
+  } else if (opts.customerEmail) {
+    sessionParams.customer_email = opts.customerEmail;
+  }
+
+  return stripe.checkout.sessions.create(sessionParams);
+};
+
+/**
+ * Provision two trial subscriptions (Keywords + LABS) after dual trial payment.
+ * Called by webhook on checkout.session.completed with type === "dual_trial".
+ */
+export const provisionDualTrialSubscriptions = async (
+  customerId: string,
+  userId: string
+): Promise<void> => {
+  const tiers = getDualTrialTiers();
+
+  for (const { appKey, tier } of tiers) {
+    const plan = findSubscriptionPlan(appKey, tier);
+    if (!plan) {
+      console.error(`[stripe] No plan found for ${appKey}:${tier}, skipping dual trial provision`);
+      continue;
+    }
+
+    // Create Stripe subscription with 7-day trial
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: plan.stripePriceIdMonthly }],
+      trial_period_days: 7,
+      metadata: { app_key: appKey, source: "dual_trial" },
+    });
+
+    // Sync to app_subscriptions table
+    await syncAppSubscription(userId, subscription, appKey);
+
+    console.log(`[stripe] Created dual trial subscription for ${appKey}: ${subscription.id}`);
+  }
+
+  // Allocate 100 trial credits (shared across both apps)
+  const trialCredits = getTrialCreditsForApp("dual_trial");
+  const trialEndsAt = new Date();
+  trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+
+  await allocateTrialCredits(userId, trialCredits, "dual_trial", trialEndsAt, `dual_trial_${customerId}`);
+  console.log(`[stripe] Allocated ${trialCredits} dual trial credits for user ${userId}`);
 };

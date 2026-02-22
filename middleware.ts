@@ -35,6 +35,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.match(/\.(ico|png|jpg|jpeg|svg|gif|woff|woff2|ttf|eot|css|js)$/)) return true;
   if (PUBLIC_API_PREFIXES.some(p => pathname.startsWith(p))) return true;
   if (PUBLIC_PATHS.includes(pathname)) return true;
+  if (pathname.startsWith('/try/')) return true;
   return false;
 }
 

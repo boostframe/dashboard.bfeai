@@ -26,10 +26,10 @@ export function CreditsPage() {
   return (
     <div className="space-y-8">
       {/* Top row: Balance card + explanation */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-2">
         <CreditBalanceCard balance={balance} isLoading={balanceLoading} />
 
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle>How credits work</CardTitle>
             <CardDescription>Credits power everything you do across BFEAI apps.</CardDescription>

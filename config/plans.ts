@@ -100,10 +100,26 @@ export function getMonthlyCreditsForSubscription(appKey: string, priceId?: strin
 /** Bundle discount coupon ID — $9/mo off when user subscribes to 2+ apps */
 export const BUNDLE_DISCOUNT_COUPON_ID = getStripeEnv("STRIPE_COUPON_BUNDLE_DISCOUNT");
 
-/** Trial credits allocated per app on trial start */
-export const TRIAL_CREDITS = 50;
+/** Dual trial $2 setup fee one-time price ID */
+export const DUAL_TRIAL_SETUP_FEE_PRICE_ID = getStripeEnv("STRIPE_PRICE_DUAL_TRIAL_SETUP_FEE");
 
-/** Get trial credits for a given app (currently flat 50 for all apps) */
+/** Trial credits allocated on dual trial start */
+export const TRIAL_CREDITS = 100;
+
+/** Get trial credits for a given app (100 for dual trial) */
 export function getTrialCreditsForApp(_appKey: string): number {
   return TRIAL_CREDITS;
+}
+
+/** App keys included in the dual trial */
+export function getDualTrialAppKeys(): string[] {
+  return ["keywords", "labs"];
+}
+
+/** App keys + tiers for dual trial subscription creation */
+export function getDualTrialTiers(): { appKey: string; tier: string }[] {
+  return [
+    { appKey: "keywords", tier: "standard" },
+    { appKey: "labs", tier: "base_tracker" },
+  ];
 }

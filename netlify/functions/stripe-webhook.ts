@@ -21,7 +21,7 @@ import {
   recalculateSubscriptionCap,
 } from "./utils/credits";
 import { getMonthlyCreditsForSubscription, getTrialCreditsForApp, findSubscriptionByPriceId, findSubscriptionPlan } from "../../config/plans";
-import { sendTrialReminderEmail } from "./utils/email";
+import { sendTrialReminderEmail, sendWelcomeEmail } from "./utils/email";
 import type Stripe from "stripe";
 
 /**
@@ -116,7 +116,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  const userId = await getUserIdFromStripeCustomer(customerId);
+  let userId = await getUserIdFromStripeCustomer(customerId);
+
+  // Unauthenticated trial flow: auto-provision account if needed
+  if (!userId && session.metadata?.flow === "unauthenticated") {
+    userId = await provisionUnauthenticatedTrialUser(customerId);
+    if (!userId) {
+      console.error("[stripe-webhook] Failed to provision user for unauthenticated checkout, customer:", customerId);
+      return;
+    }
+  }
+
   if (!userId) {
     console.error("[stripe-webhook] No BFEAI user for Stripe customer:", customerId);
     return;
@@ -152,6 +162,118 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   // --- Beta tester auto-tagging via promo code ---
   await detectAndTagBetaTester(session, userId);
+}
+
+// ---------------------------------------------------------------------------
+// Unauthenticated trial provisioning
+// ---------------------------------------------------------------------------
+
+const APP_DISPLAY_NAMES: Record<string, string> = {
+  keywords: "BFEAI Keywords",
+  labs: "BFEAI LABS",
+};
+
+/**
+ * Auto-provision a BFEAI account for a user who completed checkout without being logged in.
+ * Returns the userId on success, null on failure.
+ */
+async function provisionUnauthenticatedTrialUser(customerId: string): Promise<string | null> {
+  try {
+    // 1. Get email from Stripe customer
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer.deleted || !customer.email) {
+      console.error("[stripe-webhook] No email on Stripe customer:", customerId);
+      return null;
+    }
+    const email = customer.email;
+
+    // 2. Check if BFEAI account already exists for this email
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    let userId: string;
+    let isNewUser = false;
+
+    if (existingProfile) {
+      // 3a. Existing account — link Stripe customer, skip welcome email
+      userId = existingProfile.id;
+      console.log(`[stripe-webhook] Linking existing user ${userId} to Stripe customer ${customerId}`);
+    } else {
+      // 3b. New user — create account via Supabase Auth
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        email_confirm: true, // Skip email verification (they confirmed via Stripe)
+      });
+
+      if (authError || !authData.user) {
+        console.error("[stripe-webhook] Failed to create user:", authError?.message);
+        return null;
+      }
+
+      userId = authData.user.id;
+      isNewUser = true;
+      console.log(`[stripe-webhook] Created new user ${userId} for email ${email}`);
+    }
+
+    // 4. Upsert profiles with email + stripe_customer_id
+    //    (DB trigger from auth.users creates profile row but doesn't set email)
+    await supabaseAdmin
+      .from("profiles")
+      .upsert(
+        {
+          id: userId,
+          email,
+          stripe_customer_id: customerId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+    // 5. Link Stripe customer to BFEAI user
+    await stripe.customers.update(customerId, {
+      metadata: { bfeai_user_id: userId },
+    });
+
+    // 6. Send welcome email with password reset link (new users only)
+    if (isNewUser) {
+      try {
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: "recovery",
+          email,
+        });
+
+        if (!linkError && linkData?.properties?.action_link) {
+          // Replace Supabase's default redirect with our reset-password page
+          const resetUrl = new URL(linkData.properties.action_link);
+          const token = resetUrl.searchParams.get("token") ?? resetUrl.hash;
+          const resetLink = `https://dashboard.bfeai.com/reset-password?token_hash=${encodeURIComponent(token)}&type=recovery`;
+
+          // Determine app name from customer metadata or default
+          const appKey = (customer.metadata as Record<string, string>)?.app_key ?? "keywords";
+          const appName = APP_DISPLAY_NAMES[appKey] ?? `BFEAI ${appKey}`;
+          const plan = findSubscriptionPlan(appKey);
+
+          await sendWelcomeEmail(email, {
+            appName,
+            resetLink,
+            trialDays: 7,
+            chargeAmount: plan ? `$${plan.monthlyPrice}/mo` : "$29/mo",
+          });
+        }
+      } catch (err) {
+        // Fire-and-forget — user can request password reset manually
+        console.warn("[stripe-webhook] Failed to send welcome email:", err);
+      }
+    }
+
+    return userId;
+  } catch (err) {
+    console.error("[stripe-webhook] Error provisioning unauthenticated user:", err);
+    return null;
+  }
 }
 
 /**
@@ -463,7 +585,7 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription) {
     appName,
     chargeDate,
     chargeAmount,
-    cancellationUrl: "https://payments.bfeai.com/billing",
+    cancellationUrl: "https://dashboard.bfeai.com/billing",
   });
 
   console.log(`[stripe-webhook] Trial reminder sent for ${appKey}, user ${userId}, trial ends ${chargeDate}`);
