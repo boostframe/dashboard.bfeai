@@ -24,6 +24,7 @@ const PUBLIC_API_PREFIXES = [
 
 const STATIC_PREFIXES = [
   '/_next',
+  '/.netlify',
   '/favicon',
   '/brand',
   '/public',
